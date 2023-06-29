@@ -1,0 +1,60 @@
+import argparse
+import json
+import os
+import vdf
+import sys
+
+print("Hodi's unofficial steam-client-run-game fix for Steam Deck")
+print("For more info visit: https://github.com/dhodvogner/steam-client-run-game")
+
+argParser = argparse.ArgumentParser()
+argParser.add_argument("-p", "--parms", help="Parameters")
+args = argParser.parse_args()
+
+# get the game id from the parameters
+parsedParms = json.loads(args.parms)
+gameid = "Devkit Game: " + parsedParms["gameid"]
+
+print("Launching: %s" % gameid)
+
+appid = None
+
+# get the user ids
+userIds = []
+
+if sys.platform == "win32":
+    rootdir = 'C:\\Program Files (x86)\\Steam\\userdata'
+else:
+    rootdir = '/home/deck/.steam/steam/userdata'
+
+for file in os.listdir(rootdir):
+    directory_name = file
+    d = os.path.join(rootdir, file)
+    if os.path.isdir(d):
+        userIds.append(directory_name)
+
+# check for the app id in the screenshots.vdf file of each user
+for userId in userIds:
+    # print("User ID: %s" % userId)
+    fileName = os.path.join(rootdir, userId, "760", "screenshots.vdf")
+    # print("screenshots.vdf file: %s" % fileName)
+    if os.path.isfile(fileName):
+        with open(fileName, "r") as f:
+            data = f.read()
+        parsed_data = vdf.loads(data)
+        shortcut_names = parsed_data['Screenshots']['shortcutnames']
+        shortcut_array = [{'key': value, 'value': key}
+                          for key, value in shortcut_names.items()]
+        # print(shortcut_array)
+        for item in shortcut_array:
+            if item['key'] == gameid:
+                appid = item['value']
+                break
+
+if appid == None:
+    print("App ID not found")
+    exit()
+
+print("App ID found: %s" % appid)
+
+os.system("steam steam://rungameid/%s" % appid)
