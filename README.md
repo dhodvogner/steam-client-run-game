@@ -16,7 +16,7 @@ Tested with Unreal Engine 5.2.1
 
 ## Known issues
 
-- It seems like the Steam Overlay is not working, I will try to fix this in the future
+- It seems like the Steam Overlay is not working, if you launch the game while the Deck is in Desktop mode.
 
 ## Contributing
 
