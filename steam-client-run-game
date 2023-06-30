@@ -3,41 +3,42 @@ import json
 import os
 import vdf
 import sys
+import binascii
 
 print("Hodi's unofficial steam-client-run-game fix for Steam Deck")
 print("For more info visit: https://github.com/dhodvogner/steam-client-run-game")
 
-argParser = argparse.ArgumentParser()
-argParser.add_argument("-p", "--parms", help="Parameters")
-args = argParser.parse_args()
 
-# get the game id from the parameters
-parsedParms = json.loads(args.parms)
-gameid = "Devkit Game: " + parsedParms["gameid"]
+def get_game_id():
+    # get the game id from the parameters
+    parsedParms = json.loads(args.parms)
+    return "Devkit Game: " + parsedParms["gameid"]
 
-print("Launching: %s" % gameid)
 
-appid = None
+def get_root_dir():
+    # get the root directory of the steam user's data
+    if sys.platform == "win32":
+        return 'C:\\Program Files (x86)\\Steam\\userdata'
+    else:
+        return '/home/deck/.steam/steam/userdata'
 
-# get the user ids
-userIds = []
 
-if sys.platform == "win32":
-    rootdir = 'C:\\Program Files (x86)\\Steam\\userdata'
-else:
-    rootdir = '/home/deck/.steam/steam/userdata'
+def get_user_ids():
+    # get the user ids
+    userIds = []
+    rootdir = get_root_dir()
+    for file in os.listdir(rootdir):
+        directory_name = file
+        d = os.path.join(rootdir, file)
+        if os.path.isdir(d):
+            userIds.append(directory_name)
+    return userIds
 
-for file in os.listdir(rootdir):
-    directory_name = file
-    d = os.path.join(rootdir, file)
-    if os.path.isdir(d):
-        userIds.append(directory_name)
 
-# check for the app id in the screenshots.vdf file of each user
-for userId in userIds:
-    # print("User ID: %s" % userId)
+def get_app_id_from_user_screenshots(userId, gameId):
+    # check for the app id in the screenshots.vdf file of each user
+    rootdir = get_root_dir()
     fileName = os.path.join(rootdir, userId, "760", "screenshots.vdf")
-    # print("screenshots.vdf file: %s" % fileName)
     if os.path.isfile(fileName):
         with open(fileName, "r") as f:
             data = f.read()
@@ -45,18 +46,76 @@ for userId in userIds:
         shortcut_names = parsed_data['Screenshots']['shortcutnames']
         shortcut_array = [{'key': value, 'value': key}
                           for key, value in shortcut_names.items()]
-        # print(shortcut_array)
         for item in shortcut_array:
-            if item['key'] == gameid:
-                appid = item['value']
-                break
+            if item['key'] == gameId:
+                return item['value']
+    return None
+
+
+def get_app_id_from_user_shortcuts(userId, gameId):
+    # check for the app id in the shortcuts.vdf file of each user
+    rootdir = get_root_dir()
+    fileName = os.path.join(rootdir, userId, "config", "shortcuts.vdf")
+    if os.path.isfile(fileName):
+        with open(fileName, "rb") as f:
+            data = f.read()
+        parsed_data = vdf.binary_loads(data)
+        shortcuts = parsed_data['shortcuts']
+
+        # generate the app id from app name and exe
+        for key, value in shortcuts.items():
+            if 'appname' in value and 'exe' in value:
+                # print(value['appname'], value['exe'])
+                if value['appname'] == gameId:
+                    return generate_app_id(value['exe'], value['appname'])
+            elif 'AppName' in value and 'Exe' in value:
+                # print(value['AppName'], value['Exe'])
+                if value['AppName'] == gameId:
+                    return generate_app_id(value['Exe'], value['AppName'])
+    return None
+
+
+def generate_app_id(exe, appname):
+    # generate the app id from the app name and exe
+    # read more: https://gaming.stackexchange.com/questions/386882/how-do-i-find-the-appid-for-a-non-steam-game-on-steam
+    unique_id = ''.join([exe, appname])
+    shortcut_id = binascii.crc32(str.encode(unique_id)) | 0x80000000
+    bp_shortcut_id = (shortcut_id << 32) | 0x02000000
+    return bp_shortcut_id
+    # Nope, this doesn't work, seems like the generated id is not correct...
+
+
+argParser = argparse.ArgumentParser()
+argParser.add_argument("-p", "--parms", help="Parameters")
+args = argParser.parse_args()
+
+gameId = get_game_id()
+userIds = get_user_ids()
+appid = None
+appid2 = None
+
+print("Finding App ID for game: %s" % gameId)
+
+# check for the app id in the screenshots.vdf file of each user
+for userId in userIds:
+    appid = get_app_id_from_user_screenshots(userId, gameId)
     if appid != None:
+        print("App ID found in screenshots.vdf: %s" % appid)
         break
 
+    appid2 = get_app_id_from_user_shortcuts(userId, gameId)
+    if appid2 != None:
+        print("App ID generated from shortcuts.vdf: %s" % appid2)
+        break
+
+# if appid == None and appid2 == None:
 if appid == None:
     print("App ID not found")
+    print("On your Steam Deck navigate to Steam -> Library -> Non-Steam Games and launch the game from there")
+    exit(1)
+else:
+    appToRun = appid
+    # appToRun = appid if appid != None else appid2
+    print("Launching steam with App ID: %s" % appToRun)
+    os.system("steam steam://rungameid/%s" % appToRun)
     exit()
-
-print("App ID found: %s" % appid)
-
-os.system("steam steam://rungameid/%s" % appid)
