@@ -50,6 +50,8 @@ for userId in userIds:
             if item['key'] == gameid:
                 appid = item['value']
                 break
+    if appid != None:
+        break
 
 if appid == None:
     print("App ID not found")
