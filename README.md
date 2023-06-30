@@ -13,10 +13,13 @@ Tested with Unreal Engine 5.2.1
 3. Create a folder called `SteamDeck` in your Engine's installation `Engine/Build` folder (e.g. `C:\Program Files\Epic Games\UE_5.2\Engine\Build\SteamDeck`)
 4. Copy the `steam-client-run-game` file and `vdf` folder with all of its content to the newly created `SteamDeck` folder
 5. Launch the game from the Unreal Editor as described [here](https://docs.unrealengine.com/5.2/en-US/steam-deck-quick-start-in-unreal-engine/)
+6. **When you launch a game for the first time, it won't work.** You need to navigate on your Deck to Steam -> Library -> Non-Steam Games and launch the game from there. This will register the new appid in the `screenshots.vdf` file. After that, you can launch the game from the Unreal Editor.
 
 ## Known issues
 
-- It seems like the Steam Overlay is not working, if you launch the game while the Deck is in Desktop mode.
+- It seems like the Steam Overlay is not working, if you launch the game while the Deck is in Desktop mode. (I'm not sure if this is an issue with the script or with the Deck itself)
+- If the game was previously installed on the Deck, but then it was removed, the previous appid stays in the `screenshots.vdf` and the script tries to launch the wrong game. (Might need to collect all appids from the `screenshots.vdf` file and try to launch the game with each of them OR try to find a way to validate the appid)
+- No app in the `screenshots.vdf` file on the first ever launch :( (Can we force steam somwhow to refresh that file?)
 
 ## Contributing
 
