@@ -43,7 +43,7 @@ def get_app_id_from_user_screenshots(userId, gameId):
         with open(fileName, "r") as f:
             data = f.read()
         parsed_data = vdf.loads(data)
-        shortcut_names = parsed_data['Screenshots']['shortcutnames']
+        shortcut_names = parsed_data['screenshots']['shortcutnames']
         shortcut_array = [{'key': value, 'value': key}
                           for key, value in shortcut_names.items()]
         for item in shortcut_array:
